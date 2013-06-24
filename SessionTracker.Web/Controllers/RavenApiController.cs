@@ -11,7 +11,7 @@ namespace SessionTracker.Web.Controllers {
 
         protected readonly IAsyncDocumentSession RavenSession;
 
-        public RavenApiController(IAsyncDocumentSession documentSession) {
+        protected RavenApiController(IAsyncDocumentSession documentSession) {
 
             RavenSession = documentSession;
         }

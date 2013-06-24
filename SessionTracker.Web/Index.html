@@ -1,0 +1,357 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Session Tracker</title>
+    <link href="/Content/bootstrap.min.css" rel="stylesheet" />
+    <link href="/Content/font-awesome.min.css" rel="stylesheet" />
+    <link href="/Content/sessions-main.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <div id="mini-header" class="row">
+            <div class="span12">
+                <div class="pull-left">
+                    <div class="lead">
+                        Session Tracker
+                    </div>
+                </div>
+                <div class="pull-right">
+                    <span id="new-session-modal-shower" class="anchor"><i class="icon-plus"></i></span>
+                    <span class="anchor"><i class="icon-refresh"></i></span>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="span8">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Speaker</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody data-bind="foreach: sessions">
+                        <tr>
+                            <td><span data-bind="text: title"></span></td>
+                            <td><span data-bind="text: description"></span></td>
+                            <td><span data-bind="text: speaker().fullName"></span></td>
+                            <td><span data-bind="text: duration"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="span4">
+                <div class="well">
+                    <h4>Speakers</h4>
+                    <ul data-bind="foreach: speakers">
+                        <li><span data-bind="text: fullName"></span></li>
+                    </ul>
+                </div>
+                <div class="well">
+                    <h4>Tags</h4>
+                    <ul data-bind="foreach: tags">
+                        <li><span data-bind="text: displayName"></span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="session-request-holder" class="modal hide fade" data-bind="with: sessionToAdd">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h3>Add New Session</h3>
+        </div>
+        <div data-bind="with: requestModel">
+            <div class="modal-body" id="session-request-form-holder">
+                <div class="alert alert-danger" data-bind="visible: $root.sessionToAdd.httpError() !== null && $root.sessionToAdd.httpError() !== undefined">
+                    <div data-bind="with: $root.sessionToAdd.httpError">
+                        <div>
+                            <strong data-bind="text: message"></strong> (<span data-bind="    text: correlationId"></span>)
+                        </div>
+                        <ul data-bind="foreach: faultedItems">
+                            <li>
+                                <div>
+                                    <span data-bind="text: key"></span>
+                                    <ul data-bind="foreach: value">
+                                        <li><span data-bind="text: $data"></span></li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div>
+                    <div><strong>Speaker:</strong></div>
+                    <div>
+                        <input type="text" data-bind="value: speakerId"/>
+                    </div>
+                </div>
+                <div>
+                    <div><strong>Title:</strong></div>
+                    <div>
+                        <input type="text" class="large" data-bind="value: title"/>
+                    </div>
+                </div>
+                <div>
+                    <div><strong>Duration (in minutes):</strong></div>
+                    <div>
+                        <input type="number" max="75" min="30" data-bind="value: durationInMinutes"/>
+                    </div>
+                </div>
+                <div>
+                    <div><strong>Description:</strong></div>
+                    <div>
+                        <textarea data-bind="value: description"></textarea>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <div class="pull-left">
+                            <div><strong>Tags:</strong></div>
+                        </div>
+                        <div class="pull-right">
+                            <span class="anchor" data-bind="click: addEmptyTag"><i class="icon-plus"></i></span>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div data-bind="foreach: addableTags">
+                        <div>
+                            <input type="text" class="input-medium" data-bind="value: name"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-primary" data-bind="click: $root.addSession">Add Session</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/Scripts/jquery-2.0.2.min.js"></script>
+    <script src="/Scripts/bootstrap.min.js"></script>
+    <script src="/Scripts/knockout-2.2.1.js"></script>
+    <script src="/Scripts/underscore.min.js"></script>
+    <script>
+        (function () {
+
+            var Speaker = function () {
+
+                    var self = this;
+                    self.id = ko.observable();
+                    self.firstName = ko.observable();
+                    self.lastName = ko.observable();
+
+                    self.fullName = ko.computed(function () {
+
+                        return self.firstName() + " " + self.lastName();
+                    });
+                },
+
+                Session = function () {
+                    var self = this;
+                    
+                    self.id = ko.observable();
+                    self.title = ko.observable();
+                    self.description = ko.observable();
+                    self.durationInMinutes = ko.observable();
+                    self.tags = ko.observableArray();
+                    self.speaker = ko.observable();
+
+                    self.duration = ko.computed(function () {
+                        return self.durationInMinutes() + " Min.";
+                    });
+                },
+
+                SessionRequestModel = function () {
+                    var self = this;
+
+                    self.speakerId = ko.observable();
+                    self.title = ko.observable();
+                    self.description = ko.observable();
+                    self.durationInMinutes = ko.observable(60);
+                    self.addableTags = ko.observableArray();
+                    
+                    self.tags = ko.computed(function () {
+                        return _.map(self.addableTags(), function (tag) {
+                            return tag.name();
+                        });
+                    });
+
+                    self.addEmptyTag = function () {
+                        self.addableTags.push({ name: ko.observable('') });
+                    };
+                },
+
+                Tag = function () {
+                    var self = this;
+
+                    self.name = ko.observable();
+                    self.count = ko.observable();
+
+                    self.displayName = ko.computed(function() {
+                        return self.name() + ' (' + self.count() + ')';
+                    });
+                },
+
+                HttpError = function (status, statusText) {
+                    var self = this;
+
+                    self.status = ko.observable(status);
+                    self.statusText = ko.observable(statusText);
+                    self.correlationId = ko.observable();
+                    self.message = ko.observable();
+                    self.faultedItems = ko.observableArray();
+                },
+
+                FaultedItem = function (key, value) {
+                    var self = this;
+
+                    self.key = ko.observable(key);
+                    self.value = ko.observable(value);
+                },
+
+                sessionRequestHolderModalId = '#session-request-holder',
+
+                fromSessionDto = function (sessionDto) {
+                    
+                    var session = new Session()
+                        .id(sessionDto.id)
+                        .title(sessionDto.title)
+                        .description(sessionDto.description)
+                        .durationInMinutes(sessionDto.durationInMinutes)
+                        .tags(sessionDto.tags)
+                        .speaker(fromSpeakerDto(sessionDto.speaker));
+
+                    return session;
+                },
+
+                fromSpeakerDto = function (speakerDto) {
+
+                    var speaker = new Speaker()
+                        .id(speakerDto.id)
+                        .firstName(speakerDto.firstName)
+                        .lastName(speakerDto.lastName);
+
+                    return speaker;
+                },
+
+                fromTagDto = function (tagDto) {
+
+                    var tag = new Tag()
+                        .name(tagDto.name)
+                        .count(tagDto.count);
+
+                    return tag;
+                },
+
+                vm = {
+                    
+                    speakers: ko.observableArray(),
+                    sessions: ko.observableArray(),
+                    tags: ko.observableArray(),
+                    sessionToAdd: {
+                        httpError: ko.observable(),
+                        requestModel: ko.observable(new SessionRequestModel())
+                    },
+                    addSession: function (requestModel) {
+                        
+                        var sessionObj = ko.toJS(requestModel);
+                        delete sessionObj.addableTags;
+                        delete sessionObj.addEmptyTag;
+
+                        $.ajax({
+                            
+                            url: 'api/sessions',
+                            contentType: "application/json; charset=utf-8",
+                            data: JSON.stringify(sessionObj),
+                            type: "POST",
+                            success: function (session) {
+                                
+                                vm.sessions.push(fromSessionDto(session));
+                                $(sessionRequestHolderModalId).modal('hide');
+                                vm.sessionToAdd.httpError(null);
+                                vm.sessionToAdd.requestModel(new SessionRequestModel());
+                            },
+                            error: function (request, x, msg) {
+
+                                var httpError = new HttpError(request.status, request.statusText)
+                                    .correlationId(request.getResponseHeader('X-CorrelationId'));
+
+                                if (request.responseJSON !== null
+                                    && request.responseJSON !== undefined) {
+
+                                    if (request.responseJSON.message !== null &&
+                                        request.responseJSON.message !== undefined) {
+
+                                        httpError.message(request.responseJSON.message);
+                                    }
+                                    
+                                    if (request.responseJSON.modelState !== null &&
+                                        request.responseJSON.modelState !== undefined) {
+                                        
+                                        var faultedItemArray = _.map(_.pairs(request.responseJSON.modelState), function (faultedItem) {
+                                            return new FaultedItem(faultedItem[0], faultedItem[1]);
+                                        });
+
+                                        httpError.faultedItems(faultedItemArray);
+                                    }
+                                }
+
+                                vm.sessionToAdd.httpError(httpError);
+                            }
+                        });
+                    }
+                },
+                
+                init = function () {
+                    
+                    $.getJSON('/api/speakers', function (speakers) {
+
+                        var speakersArray = [];
+                        _.each(speakers, function (speaker) {
+
+                            speakersArray.push(fromSpeakerDto(speaker));
+                        });
+
+                        vm.speakers(speakersArray);
+                    });
+
+                    $.getJSON('/api/sessions', function (sessions) {
+
+                        var sessionsArray = [];
+                        _.each(sessions, function (session) {
+
+                            sessionsArray.push(fromSessionDto(session));
+                        });
+
+                        vm.sessions(sessionsArray);
+                    });
+
+                    $.getJSON('/api/tags', function (tags) {
+
+                        vm.tags(_.map(tags, function(tag) {
+                            return fromTagDto(tag);
+                        }));
+                    });
+                },
+                
+                setupEvents = function () {
+                    
+                    $('#new-session-modal-shower').click(function () {
+                        $(sessionRequestHolderModalId).modal('show');
+                    });
+                };
+
+            init();
+            setupEvents();
+
+            ko.applyBindings(vm);
+        }());
+    </script>
+</body>
+</html>

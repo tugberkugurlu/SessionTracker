@@ -1,20 +1,26 @@
-﻿using Autofac;
+﻿using System.Linq;
+using System.Net.Http.Formatting;
+using System.Web.Http.ModelBinding;
+using Autofac;
 using Autofac.Integration.WebApi;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Raven.Client;
 using Raven.Client.Extensions;
 using Raven.Client.Document;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Web;
 using System.Web.Http;
-using System.Web.Security;
-using System.Web.SessionState;
 using AutoMapper;
 using SessionTracker.Web.Entities;
 using SessionTracker.Web.Dtos;
+using SessionTracker.Web.MessageHandlers;
 using SessionTracker.Web.RequestModels;
+using System.Web.Http.Validation.Providers;
+using System.Web.Http.Validation;
+using WebApiDoodle.Web.Filters;
+using Raven.Client.Indexes;
+using SessionTracker.Web.Infrastructure.Indexes;
 
 namespace SessionTracker.Web {
 
@@ -30,8 +36,36 @@ namespace SessionTracker.Web {
             ConfigureAutoMapper();
 
             HttpConfiguration config = GlobalConfiguration.Configuration;
+            IContainer container = RegisterServices(new ContainerBuilder());
             config.Routes.MapHttpRoute("DefaultHttpRoute", "api/{controller}/{id}", new { id = RouteParameter.Optional });
-            config.DependencyResolver = new AutofacWebApiDependencyResolver(RegisterServices(new ContainerBuilder()));
+            config.DependencyResolver = new AutofacWebApiDependencyResolver(container);
+            config.Services.RemoveAll(typeof(ModelValidatorProvider), validator => !(validator is DataAnnotationsModelValidatorProvider));
+            config.Filters.Add(new InvalidModelStateFilterAttribute());
+            config.MessageHandlers.Add(new CorrelationHandler());
+
+            ConfigureFormatters(config.Formatters);
+
+            // Create RavenDB indexes
+            IDocumentStore documentStore = container.Resolve<IDocumentStore>();
+            IndexCreation.CreateIndexes(typeof(Tags_Count).Assembly, documentStore);
+        }
+
+        private static void ConfigureFormatters(MediaTypeFormatterCollection formatters)
+        {
+            // Remove unnecessary formatters
+            MediaTypeFormatter jqueryFormatter = formatters.FirstOrDefault(x => x.GetType() == typeof(JQueryMvcFormUrlEncodedFormatter));
+            formatters.Remove(formatters.XmlFormatter);
+            formatters.Remove(formatters.FormUrlEncodedFormatter);
+            formatters.Remove(jqueryFormatter);
+
+            // Suppressing the IRequiredMemberSelector for all formatters
+            foreach (MediaTypeFormatter formatter in formatters)
+            {
+                formatter.RequiredMemberSelector = new SuppressedRequiredMemberSelector();
+            }
+
+            formatters.JsonFormatter.SerializerSettings.DateFormatHandling = DateFormatHandling.IsoDateFormat;
+            formatters.JsonFormatter.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
         }
 
         private IContainer RegisterServices(ContainerBuilder builder) {
@@ -70,6 +104,14 @@ namespace SessionTracker.Web {
             Mapper.CreateMap<Session, SessionDto>();
             Mapper.CreateMap<SpeakerRequestModel, Speaker>();
             Mapper.CreateMap<SessionRequestModel, Session>();
+        }
+    }
+
+    public class SuppressedRequiredMemberSelector : IRequiredMemberSelector
+    {
+        public bool IsRequiredMember(MemberInfo member)
+        {
+            return false;
         }
     }
 

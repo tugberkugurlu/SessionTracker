@@ -9,23 +9,21 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Web;
 using System.Web.Http;
 
-namespace SessionTracker.Web.Controllers {
-    
-    public class SessionsController : RavenApiController {
-
+namespace SessionTracker.Web.Controllers
+{
+    public class SessionsController : RavenApiController
+    {
         private readonly IMappingEngine _mapper;
 
-        public SessionsController(IAsyncDocumentSession documentSession, IMappingEngine mapper) 
-            : base(documentSession) {
-
+        public SessionsController(IAsyncDocumentSession documentSession, IMappingEngine mapper) : base(documentSession)
+        {
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<SessionDto>> GetSessions() {
-
+        public async Task<IEnumerable<SessionDto>> GetSessions()
+        {
             IEnumerable<Session> sessions = await RavenSession
                 .Query<Session>()
                 .Include<Session>(ses => ses.SpeakerId)
@@ -33,27 +31,28 @@ namespace SessionTracker.Web.Controllers {
 
             IEnumerable<Task<SessionDto>> sessionDtoTasks = _mapper
                 .Map<IEnumerable<Session>, IEnumerable<SessionDto>>(sessions)
-                .Select(async sesDto => 
+                .Select(async sesDto =>
                 {
                     // Note: As we have included the Speaker for every session,
                     //       we won't make a trip to db for each session
                     Speaker speaker = await RavenSession.LoadAsync<Speaker>(RavenSession.GetStringId<Speaker>(sesDto.SpeakerId));
                     sesDto.Speaker = _mapper.Map<Speaker, SpeakerDto>(speaker);
                     return sesDto;
-                });
+
+                }).ToArray();
 
             await Task.WhenAll(sessionDtoTasks);
             return sessionDtoTasks.Select(x => x.Result);
         }
 
-        public async Task<SessionDto> GetSession(int id) {
-
+        public async Task<SessionDto> GetSession(int id)
+        {
             Session session = await RavenSession
                 .Include<Session>(ses => ses.SpeakerId)
                 .LoadAsync<Session>(id);
 
-            if (session == null) {
-
+            if (session == null)
+            {
                 throw new HttpResponseException(HttpStatusCode.NotFound);
             }
 
@@ -64,7 +63,13 @@ namespace SessionTracker.Web.Controllers {
             return sessionDto;
         }
 
-        public async Task<HttpResponseMessage> PostSession(SessionRequestModel requestModel) {
+        public async Task<HttpResponseMessage> PostSession(SessionRequestModel requestModel)
+        {
+            Speaker speaker = await RavenSession.LoadAsync<Speaker>(requestModel.SpeakerId);
+            if (speaker == null)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.Conflict, "Speaker doesn't exist.");
+            }
 
             Session session = _mapper.Map<SessionRequestModel, Session>(requestModel);
             session.SpeakerId = RavenSession.GetStringId<Speaker>(requestModel.SpeakerId);
@@ -73,6 +78,7 @@ namespace SessionTracker.Web.Controllers {
 
             await RavenSession.StoreAsync(session);
             SessionDto sessionDto = _mapper.Map<Session, SessionDto>(session);
+            sessionDto.Speaker = _mapper.Map<Speaker, SpeakerDto>(speaker);
 
             return Request.CreateResponse(HttpStatusCode.Created, sessionDto);
         }
