@@ -46,7 +46,15 @@
             </div>
             <div class="span4">
                 <div class="well">
-                    <h4>Speakers</h4>
+                    <div>
+                        <div class="pull-left">
+                            <h4>Speakers</h4>
+                        </div>
+                        <div class="pull-right">
+                            <span id="new-speaker-modal-shower" class="anchor"><i class="icon-plus"></i></span>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
                     <ul data-bind="foreach: speakers">
                         <li><span data-bind="text: fullName"></span></li>
                     </ul>
@@ -67,7 +75,7 @@
             <h3>Add New Session</h3>
         </div>
         <div data-bind="with: requestModel">
-            <div class="modal-body" id="session-request-form-holder">
+            <div class="modal-body request-form-holder">
                 <div class="alert alert-danger" data-bind="visible: $root.sessionToAdd.httpError() !== null && $root.sessionToAdd.httpError() !== undefined">
                     <div data-bind="with: $root.sessionToAdd.httpError">
                         <div>
@@ -131,6 +139,32 @@
             </div>
         </div>
     </div>
+    
+    <div id="speaker-request-holder" class="modal hide fade" data-bind="with: speakerToAdd">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h3>Add New Speaker</h3>
+        </div>
+        <div data-bind="with: requestModel">
+            <div class="modal-body request-form-holder">
+                <div>
+                    <div><strong>First Name:</strong></div>
+                    <div>
+                        <input type="text" class="input-large" data-bind="value: firstName"/>
+                    </div>
+                </div>
+                <div>
+                    <div><strong>Last Name:</strong></div>
+                    <div>
+                        <input type="text" class="input-large" data-bind="value: lastName"/>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="#" class="btn btn-primary" data-bind="click: $root.addSpeaker">Add Speaker</a>
+            </div>
+        </div>
+    </div>
 
     <script src="/Scripts/jquery-2.0.2.min.js"></script>
     <script src="/Scripts/bootstrap.min.js"></script>
@@ -186,6 +220,13 @@
                         self.addableTags.push({ name: ko.observable('') });
                     };
                 },
+                
+                SpeakerRequestModel = function () {
+                    var self = this;
+
+                    self.firstName = ko.observable();
+                    self.lastName = ko.observable();
+                },
 
                 Tag = function () {
                     var self = this;
@@ -215,7 +256,12 @@
                     self.value = ko.observable(value);
                 },
 
-                sessionRequestHolderModalId = '#session-request-holder',
+                constants = {
+                    
+                    contentType: 'application/json; charset=utf-8',
+                    sessionRequestHolderModalId: '#session-request-holder',
+                    speakerRequestHolderModalId: '#speaker-request-holder'
+                },
 
                 fromSessionDto = function (sessionDto) {
                     
@@ -258,6 +304,11 @@
                         httpError: ko.observable(),
                         requestModel: ko.observable(new SessionRequestModel())
                     },
+                    speakerToAdd: {
+                        httpError: ko.observable(),
+                        requestModel: ko.observable(new SpeakerRequestModel())
+                    },
+                    
                     addSession: function (requestModel) {
                         
                         var sessionObj = ko.toJS(requestModel);
@@ -267,44 +318,67 @@
                         $.ajax({
                             
                             url: 'api/sessions',
-                            contentType: "application/json; charset=utf-8",
+                            contentType: constants.contentType,
                             data: JSON.stringify(sessionObj),
                             type: "POST",
                             success: function (session) {
                                 
+                                $(constants.sessionRequestHolderModalId).modal('hide');
                                 vm.sessions.push(fromSessionDto(session));
-                                $(sessionRequestHolderModalId).modal('hide');
                                 vm.sessionToAdd.httpError(null);
                                 vm.sessionToAdd.requestModel(new SessionRequestModel());
                             },
                             error: function (request, x, msg) {
-
-                                var httpError = new HttpError(request.status, request.statusText)
-                                    .correlationId(request.getResponseHeader('X-CorrelationId'));
-
-                                if (request.responseJSON !== null
-                                    && request.responseJSON !== undefined) {
-
-                                    if (request.responseJSON.message !== null &&
-                                        request.responseJSON.message !== undefined) {
-
-                                        httpError.message(request.responseJSON.message);
-                                    }
-                                    
-                                    if (request.responseJSON.modelState !== null &&
-                                        request.responseJSON.modelState !== undefined) {
-                                        
-                                        var faultedItemArray = _.map(_.pairs(request.responseJSON.modelState), function (faultedItem) {
-                                            return new FaultedItem(faultedItem[0], faultedItem[1]);
-                                        });
-
-                                        httpError.faultedItems(faultedItemArray);
-                                    }
-                                }
-
-                                vm.sessionToAdd.httpError(httpError);
+                                vm.sessionToAdd.httpError(generateHttpError(request));
                             }
                         });
+                    },
+                    
+                    addSpeaker: function (requestModel) {
+
+                        $.ajax({
+                            
+                            url: 'api/speakers',
+                            contentType: constants.contentType,
+                            data: JSON.stringify(ko.toJS(requestModel)),
+                            type: "POST",
+                            success: function (speaker) {
+                                
+                                $(constants.speakerRequestHolderModalId).modal('hide');
+                                vm.speakers.push(fromSpeakerDto(speaker));
+                                vm.speakerToAdd.httpError(null);
+                                vm.speakerToAdd.requestModel(new SpeakerRequestModel());
+                            },
+                            error: function (request, x, msg) {
+                                vm.speakerToAdd.httpError(generateHttpError(request));
+                            }
+                        });
+                    }
+                },
+                
+                generateHttpError = function (request) {
+                    
+                    var httpError = new HttpError(request.status, request.statusText)
+                        .correlationId(request.getResponseHeader('X-CorrelationId'));
+
+                    if (request.responseJSON !== null
+                        && request.responseJSON !== undefined) {
+
+                        if (request.responseJSON.message !== null &&
+                            request.responseJSON.message !== undefined) {
+
+                            httpError.message(request.responseJSON.message);
+                        }
+
+                        if (request.responseJSON.modelState !== null &&
+                            request.responseJSON.modelState !== undefined) {
+
+                            var faultedItemArray = _.map(_.pairs(request.responseJSON.modelState), function (faultedItem) {
+                                return new FaultedItem(faultedItem[0], faultedItem[1]);
+                            });
+
+                            httpError.faultedItems(faultedItemArray);
+                        }
                     }
                 },
                 
@@ -343,7 +417,11 @@
                 setupEvents = function () {
                     
                     $('#new-session-modal-shower').click(function () {
-                        $(sessionRequestHolderModalId).modal('show');
+                        $(constants.sessionRequestHolderModalId).modal('show');
+                    });
+                    
+                    $('#new-speaker-modal-shower').click(function () {
+                        $(constants.speakerRequestHolderModalId).modal('show');
                     });
                 };
 

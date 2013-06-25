@@ -9,13 +9,13 @@ span.anchor {
   cursor: pointer;
   margin-right: 2.5px;
 }
-#session-request-form-holder {
+.request-form-holder {
   padding-right: 25px;
 }
-#session-request-form-holder input[type=text].large {
+.request-form-holder input[type=text].large {
   width: 100%;
 }
-#session-request-form-holder textarea {
+.request-form-holder textarea {
   width: 100%;
   max-width: 100%;
 }
