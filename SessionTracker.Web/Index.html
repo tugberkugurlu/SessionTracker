@@ -71,7 +71,7 @@
                 <div class="alert alert-danger" data-bind="visible: $root.sessionToAdd.httpError() !== null && $root.sessionToAdd.httpError() !== undefined">
                     <div data-bind="with: $root.sessionToAdd.httpError">
                         <div>
-                            <strong data-bind="text: message"></strong> (<span data-bind="    text: correlationId"></span>)
+                            <strong data-bind="text: message"></strong> (<span data-bind="text: correlationId"></span>)
                         </div>
                         <ul data-bind="foreach: faultedItems">
                             <li>
@@ -88,7 +88,7 @@
                 <div>
                     <div><strong>Speaker:</strong></div>
                     <div>
-                        <input type="text" data-bind="value: speakerId"/>
+                        <select data-bind="options: $root.speakers, optionsText: 'fullName', optionsValue: 'id', value: speakerId"></select>
                     </div>
                 </div>
                 <div>
@@ -140,8 +140,8 @@
         (function () {
 
             var Speaker = function () {
-
                     var self = this;
+
                     self.id = ko.observable();
                     self.firstName = ko.observable();
                     self.lastName = ko.observable();
