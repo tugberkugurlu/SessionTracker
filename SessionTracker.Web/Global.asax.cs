@@ -1,26 +1,28 @@
-﻿using System.Linq;
-using System.Net.Http.Formatting;
-using System.Web.Http.ModelBinding;
-using Autofac;
+﻿using Autofac;
 using Autofac.Integration.WebApi;
+using AutoMapper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Raven.Client;
-using Raven.Client.Extensions;
 using Raven.Client.Document;
-using System;
-using System.Reflection;
-using System.Web.Http;
-using AutoMapper;
-using SessionTracker.Web.Entities;
+using Raven.Client.Extensions;
+using Raven.Client.Indexes;
 using SessionTracker.Web.Dtos;
+using SessionTracker.Web.Entities;
+using SessionTracker.Web.Infrastructure;
+using SessionTracker.Web.Infrastructure.Formatting;
+using SessionTracker.Web.Infrastructure.Indexes;
 using SessionTracker.Web.MessageHandlers;
 using SessionTracker.Web.RequestModels;
-using System.Web.Http.Validation.Providers;
+using System;
+using System.Linq;
+using System.Net.Http.Formatting;
+using System.Reflection;
+using System.Web.Http;
+using System.Web.Http.ModelBinding;
 using System.Web.Http.Validation;
+using System.Web.Http.Validation.Providers;
 using WebApiDoodle.Web.Filters;
-using Raven.Client.Indexes;
-using SessionTracker.Web.Infrastructure.Indexes;
 
 namespace SessionTracker.Web {
 
@@ -104,80 +106,6 @@ namespace SessionTracker.Web {
             Mapper.CreateMap<Session, SessionDto>();
             Mapper.CreateMap<SpeakerRequestModel, Speaker>();
             Mapper.CreateMap<SessionRequestModel, Session>();
-        }
-    }
-
-    public class SuppressedRequiredMemberSelector : IRequiredMemberSelector
-    {
-        public bool IsRequiredMember(MemberInfo member)
-        {
-            return false;
-        }
-    }
-
-    public static class NumericExtensions {
-
-        public static int ToIntId(this string id) {
-
-            return int.Parse(id.Substring(id.LastIndexOf('/') + 1));
-        }
-    }
-
-    public static class DocumentSessionExtensions {
-
-        public static string GetStringId<T>(this IDocumentSession session, ValueType id) {
-
-            return session.Advanced.DocumentStore.Conventions
-                .DefaultFindFullDocumentKeyFromNonStringIdentifier(id, typeof(T), false);
-        }
-
-        public static string GetStringId<T>(this IAsyncDocumentSession session, ValueType id) {
-
-            return session.Advanced.DocumentStore.Conventions
-                .DefaultFindFullDocumentKeyFromNonStringIdentifier(id, typeof(T), false);
-        }
-    }
-
-    public class IntTypeConverter : TypeConverter<string, int> {
-
-        protected override int ConvertCore(string source) {
-
-            if (source == null) {
-
-                throw new AutoMapperMappingException("Cannot convert null string to non-nullable return type.");
-            }
-
-            if (source.Contains("/")) {
-
-                return source.ToIntId();
-            }
-
-            return int.Parse(source);
-        }
-    }
-
-    public class NullIntTypeConverter : TypeConverter<string, int?> {
-
-        protected override int? ConvertCore(string source) {
-
-            int? nullableValue = new Nullable<int>();
-            if (source != null) {
-
-                if (source.Contains("/")) {
-
-                    nullableValue = source.ToIntId();
-                }
-                else {
-
-                    int result;
-                    if (int.TryParse(source, out result)) {
-
-                        nullableValue = result;
-                    }
-                }
-            }
-
-            return nullableValue;
         }
     }
 }
