@@ -36,10 +36,15 @@
                     </thead>
                     <tbody data-bind="foreach: sessions">
                         <tr>
-                            <td><span data-bind="text: title"></span></td>
+                            <td style="text-align: center;"><span data-bind="text: title"></span></td>
                             <td><span data-bind="text: description"></span></td>
-                            <td><span data-bind="text: speaker().fullName"></span></td>
-                            <td><span data-bind="text: duration"></span></td>
+                            <td style="text-align: center;">
+                                <div>
+                                    <img data-bind="attr: { src: speaker().imageUrl, alt: speaker().fullName, title: speaker().fullName }" />
+                                </div>
+                                <span data-bind="text: speaker().fullName"></span>
+                            </td>
+                            <td style="text-align: center;"><span data-bind="text: duration"></span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -178,6 +183,12 @@
                         <input type="text" class="input-large" data-bind="value: lastName"/>
                     </div>
                 </div>
+                <div>
+                    <div><strong>Email:</strong></div>
+                    <div>
+                        <input type="text" class="input-large" data-bind="value: email"/>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <a href="#" class="btn btn-primary" data-bind="click: $root.addSpeaker">Add Speaker</a>
@@ -198,9 +209,13 @@
                     self.id = ko.observable();
                     self.firstName = ko.observable();
                     self.lastName = ko.observable();
+                    self.gravatarHash = ko.observable();
+                
+                    self.imageUrl = ko.computed(function () {
+                        return "http://www.gravatar.com/avatar/" + self.gravatarHash() + "?s=80&d=identicon";
+                    });
 
                     self.fullName = ko.computed(function () {
-
                         return self.firstName() + " " + self.lastName();
                     });
                 },
@@ -245,6 +260,7 @@
 
                     self.firstName = ko.observable();
                     self.lastName = ko.observable();
+                    self.email = ko.observable();
                 },
 
                 Tag = function () {
@@ -300,7 +316,8 @@
                     var speaker = new Speaker()
                         .id(speakerDto.id)
                         .firstName(speakerDto.firstName)
-                        .lastName(speakerDto.lastName);
+                        .lastName(speakerDto.lastName)
+                        .gravatarHash(speakerDto.gravatarHash);
 
                     return speaker;
                 },

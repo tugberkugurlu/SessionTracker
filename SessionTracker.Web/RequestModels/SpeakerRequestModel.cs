@@ -1,8 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
-namespace SessionTracker.Web.RequestModels {
 
-    public class SpeakerRequestModel {
-
+namespace SessionTracker.Web.RequestModels
+{
+    public class SpeakerRequestModel
+    {
         [Required]
         [StringLength(25)]
         public string FirstName { get; set; }
@@ -10,5 +11,10 @@ namespace SessionTracker.Web.RequestModels {
         [Required]
         [StringLength(25)]
         public string LastName { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [StringLength(250)]
+        public string Email { get; set; }
     }
 }

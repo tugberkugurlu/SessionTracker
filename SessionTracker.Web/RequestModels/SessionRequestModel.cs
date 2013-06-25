@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SessionTracker.Web.RequestModels {
-
-    public class SessionRequestModel {
-
+namespace SessionTracker.Web.RequestModels
+{
+    public class SessionRequestModel
+    {
         public int SpeakerId { get; set; }
 
         [Required]
