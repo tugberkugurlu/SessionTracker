@@ -147,6 +147,25 @@
         </div>
         <div data-bind="with: requestModel">
             <div class="modal-body request-form-holder">
+                
+                <div class="alert alert-danger" data-bind="visible: $root.speakerToAdd.httpError() !== null && $root.speakerToAdd.httpError() !== undefined">
+                    <div data-bind="with: $root.speakerToAdd.httpError">
+                        <div>
+                            <strong data-bind="text: message"></strong> (<span data-bind="text: correlationId"></span>)
+                        </div>
+                        <ul data-bind="foreach: faultedItems">
+                            <li>
+                                <div>
+                                    <span data-bind="text: key"></span>
+                                    <ul data-bind="foreach: value">
+                                        <li><span data-bind="text: $data"></span></li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
                 <div>
                     <div><strong>First Name:</strong></div>
                     <div>
@@ -300,10 +319,12 @@
                     speakers: ko.observableArray(),
                     sessions: ko.observableArray(),
                     tags: ko.observableArray(),
+                    
                     sessionToAdd: {
                         httpError: ko.observable(),
                         requestModel: ko.observable(new SessionRequestModel())
                     },
+                    
                     speakerToAdd: {
                         httpError: ko.observable(),
                         requestModel: ko.observable(new SpeakerRequestModel())
@@ -380,6 +401,8 @@
                             httpError.faultedItems(faultedItemArray);
                         }
                     }
+
+                    return httpError;
                 },
                 
                 init = function () {
